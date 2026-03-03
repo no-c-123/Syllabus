@@ -24,8 +24,16 @@ class SyncService {
   setUserId(id: string | null) {
     this.userId = id;
     if (id) {
-      this.pullAll();
+      this.syncAll();
     }
+  }
+
+  async syncAll() {
+    if (!this.userId) return;
+    // Pull first to get any remote changes
+    await this.pullAll();
+    // Then push any local changes
+    await this.pushAll();
   }
 
   private setupHooks() {
@@ -236,6 +244,41 @@ class SyncService {
         };
       default:
         return data;
+    }
+  }
+
+  async pushAll() {
+    if (!this.userId) return;
+    this.isSyncing = true;
+    console.log("Starting full push...");
+
+    try {
+      const tables = Object.keys(TABLE_MAPPING);
+
+      for (const dexieTableName of tables) {
+        // @ts-ignore
+        const table = db[dexieTableName] as Table<any, any>;
+        const allItems = await table.toArray();
+
+        if (allItems.length === 0) continue;
+
+        const supabaseTableName = TABLE_MAPPING[dexieTableName];
+        
+        // Chunking
+        const chunkSize = 50;
+        for (let i = 0; i < allItems.length; i += chunkSize) {
+            const chunk = allItems.slice(i, i + chunkSize);
+            const mappedItems = await Promise.all(chunk.map(item => this.mapToSupabase(dexieTableName, { ...item, user_id: this.userId })));
+            
+            const { error } = await supabase.from(supabaseTableName).upsert(mappedItems);
+            if (error) console.error(`Failed to push chunk to ${supabaseTableName}:`, error);
+        }
+        console.log(`Pushed ${allItems.length} records for ${dexieTableName}`);
+      }
+    } catch (err) {
+      console.error("Push failed:", err);
+    } finally {
+      this.isSyncing = false;
     }
   }
 
