@@ -264,8 +264,9 @@ class SyncService {
 
         const supabaseTableName = TABLE_MAPPING[dexieTableName];
         
-        // Chunking
-        const chunkSize = 50;
+        // Chunking with smaller batches for heavy tables
+        const chunkSize = (dexieTableName === 'strokes' || dexieTableName === 'blocks') ? 20 : 50;
+        
         for (let i = 0; i < allItems.length; i += chunkSize) {
             const chunk = allItems.slice(i, i + chunkSize);
             const mappedItems = await Promise.all(chunk.map(item => this.mapToSupabase(dexieTableName, { ...item, user_id: this.userId })));
@@ -295,17 +296,39 @@ class SyncService {
         // @ts-ignore
         const table = db[dexieTableName] as Table<any, any>;
 
-        const { data, error } = await supabase.from(supabaseTableName).select("*");
+        let allData: any[] = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
 
-        if (error) {
-          console.error(`Error pulling ${supabaseTableName}:`, error);
-          continue;
+        while (hasMore) {
+            const { data, error } = await supabase
+                .from(supabaseTableName)
+                .select("*")
+                .range(page * pageSize, (page + 1) * pageSize - 1);
+
+            if (error) {
+                console.error(`Error pulling ${supabaseTableName}:`, error);
+                hasMore = false;
+                break;
+            }
+
+            if (data && data.length > 0) {
+                allData = [...allData, ...data];
+                if (data.length < pageSize) {
+                    hasMore = false;
+                } else {
+                    page++;
+                }
+            } else {
+                hasMore = false;
+            }
         }
 
-        if (data && data.length > 0) {
-          const dexieData = data.map((item) => this.mapFromSupabase(dexieTableName, item));
+        if (allData.length > 0) {
+          const dexieData = allData.map((item) => this.mapFromSupabase(dexieTableName, item));
           await table.bulkPut(dexieData);
-          console.log(`Synced ${data.length} records for ${dexieTableName}`);
+          console.log(`Synced ${allData.length} records for ${dexieTableName}`);
         }
       }
     } catch (err) {
