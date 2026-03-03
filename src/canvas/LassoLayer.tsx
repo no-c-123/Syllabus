@@ -1,5 +1,4 @@
 import { Layer, Rect, Transformer } from "react-konva";
-import { useCanvasStore } from "../canvas/useCanvasStore";
 import { useBlockStore } from "../blocks/useBlockStore";
 import { useRef, useEffect } from "react";
 import Konva from "konva";
@@ -12,7 +11,6 @@ export function LassoLayer({
   updateBlockSize,
   strokes,
   selectedIds,
-  setSelectedIds,
   setSelectionOffset,
 }: {
   selectionBBox: { x: number; y: number; width: number; height: number } | null;
@@ -51,7 +49,7 @@ export function LassoLayer({
         strokeWidth={2 / stageScale}
         dash={[5 / stageScale, 5 / stageScale]}
         draggable
-        onDragStart={(e) => {
+        onDragStart={() => {
           isGestureRef.current = true;
         }}
         onDragMove={(e) => {
@@ -103,7 +101,7 @@ export function LassoLayer({
           
           e.target.position({ x: selectionBBox.x + dx, y: selectionBBox.y + dy });
         }}
-        onTransformEnd={(e) => {
+        onTransformEnd={() => {
             const node = rectRef.current;
             if (!node) return;
 

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useCallback } from "react";
 import { ShapeRecognizer, type RecognizedShape } from "../lib/ShapeRecognizer";
 
 interface UseShapeSnappingProps {

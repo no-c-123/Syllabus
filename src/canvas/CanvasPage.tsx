@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
-import { Stage, Layer, Rect } from "react-konva";
+import { Stage } from "react-konva";
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Minus, Plus } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useShapeSnapping } from "../hooks/useShapeSnapping";
 import type { RecognizedShape } from "../lib/ShapeRecognizer";
 import { isStrokeInPolygon, isRectInPolygon } from "../lib/selection";
-import { ERASE_RADIUS, useCanvasStore } from "./useCanvasStore";
+import { useCanvasStore } from "./useCanvasStore";
 import { useBlockStore } from "../blocks/useBlockStore";
 import { useHistoryStore } from "../history/useHistoryStore";
 import { useAppStore } from "../store/useAppStore";

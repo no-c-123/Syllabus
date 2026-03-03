@@ -1,6 +1,6 @@
 import { Layer, Group, Path } from "react-konva";
 import type { Stroke } from "./useCanvasStore";
-import { useMemo, useRef, useEffect, useState, memo } from "react";
+import { useMemo, useRef, useEffect, memo } from "react";
 import Konva from "konva";
 import { QuadTree } from "../lib/QuadTree";
 

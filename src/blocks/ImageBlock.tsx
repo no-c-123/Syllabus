@@ -86,7 +86,7 @@ export function ImageBlock({
                 trRef.current.keepRatio(false);
             }
         }}
-        onTransformEnd={(e) => {
+        onTransformEnd={() => {
           const node = imageRef.current;
           if (!node) return;
           

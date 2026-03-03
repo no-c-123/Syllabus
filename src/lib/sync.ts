@@ -38,7 +38,7 @@ class SyncService {
 
       if (!table) return;
 
-      table.hook("creating", function (primKey: any, obj: any, transaction: any) {
+      table.hook("creating", function (_primKey: any, obj: any, _transaction: any) {
         // @ts-ignore
         this.onsuccess = function (resultKey: any) {
           if (self.isSyncing || !self.userId) return;
@@ -46,9 +46,9 @@ class SyncService {
         };
       });
 
-      table.hook("updating", function (mods: any, primKey: any, obj: any, transaction: any) {
+      table.hook("updating", function (mods: any, primKey: any, obj: any, _transaction: any) {
         // @ts-ignore
-        this.onsuccess = function (updatedKey: any) {
+        this.onsuccess = function (_updatedKey: any) {
           if (self.isSyncing || !self.userId) return;
           // mods contains the modifications. obj is the old object.
           // We merge to get the final state.
@@ -59,7 +59,7 @@ class SyncService {
         };
       });
 
-      table.hook("deleting", function (primKey: any, obj: any, transaction: any) {
+      table.hook("deleting", function (primKey: any, _obj: any, _transaction: any) {
         // @ts-ignore
         this.onsuccess = function () {
           if (self.isSyncing || !self.userId) return;
