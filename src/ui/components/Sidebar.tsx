@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { 
   Folder as FolderIcon, 
   Book, 
@@ -8,7 +8,6 @@ import {
   Search, 
   Plus, 
   Settings,
-  MoreHorizontal,
   Trash2,
   Edit2,
   FolderPlus,
@@ -428,28 +427,13 @@ function NotebookItem({ notebook, pages, activePageId, onPageSelect, onDeletePag
   );
 }
 
-function PageItem({ page, isActive, onSelect, onDelete }: { 
+function PageItem({ page, isActive, onSelect, onDelete, onRename }: { 
   page: Page, 
   isActive: boolean, 
   onSelect: () => void,
   onDelete: () => void,
   onRename: () => void
 }) {
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    }
-    if (showMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showMenu]);
-
   return (
     <div
       onClick={onSelect}
@@ -457,8 +441,7 @@ function PageItem({ page, isActive, onSelect, onDelete }: {
         "flex items-center w-full px-2 py-1.5 rounded-md transition-all group relative cursor-pointer select-none",
         isActive 
           ? "bg-[var(--accent-subtle)]/50 text-[var(--accent-hover)] font-medium" 
-          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)]",
-        showMenu && "bg-[var(--bg-panel)] text-[var(--text-primary)]"
+          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-panel)]"
       )}
     >
       {isActive && (
@@ -473,56 +456,29 @@ function PageItem({ page, isActive, onSelect, onDelete }: {
       )} />
       <span className="truncate text-[13px]">{page.title}</span>
       
-      {/* Three dots button */}
-      <div 
-        className={cn(
-          "ml-auto p-1 rounded hover:bg-[var(--bg-panel)] transition-colors opacity-0 group-hover:opacity-100",
-          (isActive || showMenu) && "opacity-100",
-          showMenu && "bg-[var(--bg-panel)] text-[var(--text-primary)]"
-        )}
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowMenu(!showMenu);
-        }}
-      >
-        <MoreHorizontal className="w-3 h-3 text-[var(--text-tertiary)] hover:text-[var(--text-primary)]" />
+      {/* Page Controls */}
+      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRename();
+          }}
+          className="p-1 text-zinc-500 hover:text-zinc-200 transition-all"
+          title="Rename Page"
+        >
+          <Edit2 className="w-3 h-3" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="p-1 text-zinc-500 hover:text-rose-400 transition-all"
+          title="Delete Page"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
       </div>
-
-      <AnimatePresence>
-        {showMenu && (
-          <motion.div
-            ref={menuRef}
-            initial={{ opacity: 0, scale: 0.95, y: 5 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 5 }}
-            transition={{ duration: 0.1 }}
-            className="absolute right-0 top-full mt-1 w-32 bg-zinc-900 border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
-            style={{ 
-              boxShadow: '0 4px 20px rgba(0,0,0,0.5)', 
-              right: '0', // Align with right edge to avoid clipping
-              zIndex: 50
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-1">
-              <button className="flex items-center w-full px-2 py-1.5 text-xs text-zinc-400 hover:text-zinc-100 hover:bg-white/5 rounded transition-colors text-left">
-                <Edit2 className="w-3 h-3 mr-2" />
-                Rename
-              </button>
-              <button 
-                onClick={() => {
-                  onDelete();
-                  setShowMenu(false);
-                }}
-                className="flex items-center w-full px-2 py-1.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded transition-colors text-left"
-              >
-                <Trash2 className="w-3 h-3 mr-2" />
-                Delete
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -28,7 +28,6 @@ interface EditorProps {
 }
 
 export function Editor({ page, notebook }: EditorProps) {
-  const [title, setTitle] = useState(page?.title || "");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -44,18 +43,11 @@ export function Editor({ page, notebook }: EditorProps) {
   const selectedBlockId = useBlockStore((s) => s.selectedBlockId);
   const deleteBlock = useBlockStore((s) => s.deleteBlock);
   const deletePage = useAppStore((s) => s.deletePage);
-  const renamePage = useAppStore((s) => s.renamePage);
   const toggleStar = useAppStore((s) => s.toggleStar);
   const historyPush = useHistoryStore((s) => s.push);
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
   const historyClear = useHistoryStore((s) => s.clear);
-
-  useEffect(() => {
-    if (page?.title) {
-      setTitle(page.title);
-    }
-  }, [page?.title]);
 
   useEffect(() => {
     const isEditableTarget = (target: EventTarget | null) => {
@@ -152,7 +144,7 @@ export function Editor({ page, notebook }: EditorProps) {
               {notebook?.name || "Notebook"}
             </span>
             <span className="text-[var(--text-tertiary)]">/</span>
-            <span className="text-[var(--text-primary)] font-medium truncate">{title}</span>
+            <span className="text-[var(--text-primary)] font-medium truncate">{page.title}</span>
           </div>
         </div>
 
