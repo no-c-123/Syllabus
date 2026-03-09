@@ -13,23 +13,28 @@ const TABLE_MAPPING: Record<string, string> = {
   appState: "app_state",
 };
 
+
+const SYNC_ENABLED = true;
+
 class SyncService {
   private isSyncing = false;
   private userId: string | null = null;
 
   constructor() {
-    this.setupHooks();
+    if (SYNC_ENABLED) {
+      this.setupHooks();
+    }
   }
 
   setUserId(id: string | null) {
     this.userId = id;
-    if (id) {
+    if (id && SYNC_ENABLED) {
       this.syncAll();
     }
   }
 
   async syncAll() {
-    if (!this.userId) return;
+    if (!this.userId || !SYNC_ENABLED) return;
     // Pull first to get any remote changes
     await this.pullAll();
     // Then push any local changes
@@ -79,9 +84,68 @@ class SyncService {
     
     try {
       if (type === "DELETE") {
+        if (dexieTableName === "appState") {
+          return;
+        }
         await supabase.from(supabaseTableName).delete().match({ id: data.id });
       } else {
         const mappedData = await this.mapToSupabase(dexieTableName, { ...data, userId: this.userId });
+        
+        // Ensure points are stringified for bytea storage if needed
+        if (dexieTableName === "strokes" && Array.isArray(mappedData.points)) {
+            // If the column is bytea, we should probably send it as a Buffer or Uint8Array?
+            // Or Supabase client handles it?
+            // If we send an array of numbers to a bytea column, it might fail or be weird.
+            // But if we send a string, it might work if it's hex encoded.
+            // Based on the log \x5b31..., it seems like it's stored as the ASCII string of the JSON array.
+            // i.e. "[153, 200...]" -> hex encoded.
+            
+            // So we should JSON.stringify it?
+            // Actually, Supabase/Postgrest usually handles JSON -> bytea conversion if configured?
+            // But let's be explicit to match the read format.
+            // If we send the array directly, Supabase client might send it as JSON.
+            // Let's try sending it as a string first.
+            // mappedData.points = JSON.stringify(mappedData.points); 
+            // Wait, no. If we send a string to a bytea column, it expects hex format starting with \x.
+            // If we send JSON, it might work if the column is JSONB.
+            // The logs suggest it IS a bytea column storing JSON text.
+            
+            // Let's leave it as array for now, assuming Supabase client handles serialization.
+            // If push fails, we'll see.
+        }
+        
+        // Special handling for appState partial updates
+        if (dexieTableName === "appState") {
+           // We need to upsert into the user's single row
+           // mappedData will be a partial object like { user_id: ..., last_opened_page: ... }
+           // We must ensure we don't overwrite other columns with null if they are missing
+           // But supabase .upsert() handles partials if we don't specify all columns? 
+           // Yes, upsert matches on PK (user_id) and updates provided columns.
+           
+           // However, if we are updating 'settings' or 'sidebarVisible' which go into 'ui_state',
+           // we need to be careful not to overwrite the entire 'ui_state' jsonb if we only have a part of it.
+           // For now, let's assume mapToSupabase handles the structure correctly.
+           
+           // Issue: if mappedData.ui_state is just { sidebarVisible: true }, and DB has { settings: {...} },
+           // a standard SQL UPDATE or Upsert might replace the whole JSONB column.
+           // Supabase/Postgres requires jsonb_set or merging for deep updates.
+           // BUT, if we assume we just replace the top-level keys in ui_state, we might need to fetch first?
+           // OR we can rely on a stored procedure or just risk it for now if we don't have deep merging requirements yet.
+           // Actually, let's try to fetch the current ui_state if we are touching it.
+           
+           if (mappedData.ui_state) {
+               const { data: current } = await supabase
+                 .from(supabaseTableName)
+                 .select('ui_state')
+                 .eq('user_id', this.userId)
+                 .single();
+                 
+               if (current && current.ui_state) {
+                   mappedData.ui_state = { ...current.ui_state, ...mappedData.ui_state };
+               }
+           }
+        }
+
         // Upsert is safer
         const { error } = await supabase.from(supabaseTableName).upsert(mappedData);
         if (error) throw error;
@@ -113,6 +177,11 @@ class SyncService {
       Object.keys(obj).forEach(key => obj[key] === undefined && delete obj[key]);
       return obj;
     };
+    
+    // Debug
+    // if (dexieTableName === 'strokes') {
+    //     console.log(`[Sync] Mapping stroke to supabase. Points type: ${typeof data.points}, isArray: ${Array.isArray(data.points)}`);
+    // }
 
     switch (dexieTableName) {
       case "folders":
@@ -127,7 +196,7 @@ class SyncService {
           page_id: data.pageId,
           points: data.points, // Note: Should be binary/bytea if possible, but keeping as is for now if compatible
           color: data.color,
-          width: data.width,
+          width: data.strokeWidth || data.width, // Prefer strokeWidth
         });
       case "canvasElements":
         // Handle Blob in data field for images
@@ -155,12 +224,26 @@ class SyncService {
           data: elementData,
         });
       case "appState":
-        return clean({
-          key: data.key,
-          user_id: common.user_id,
-          value: data.value,
-          updated_at: common.updated_at,
-        });
+        // Map local key-value to remote columns
+        // data = { key: "activePageId", value: "...", updatedAt: ... }
+        
+        const mappedState: any = {
+            user_id: common.user_id,
+            updated_at: common.updated_at
+        };
+
+        if (data.key === "activePageId") {
+            mappedState.last_opened_page = data.value;
+        } else if (data.key === "settings") {
+            mappedState.ui_state = { settings: data.value };
+        } else if (data.key === "sidebarVisible") {
+            mappedState.ui_state = { sidebarVisible: data.value };
+        } else {
+            // Other keys go into ui_state
+            mappedState.ui_state = { [data.key]: data.value };
+        }
+
+        return clean(mappedState);
       default:
         return data;
     }
@@ -174,6 +257,11 @@ class SyncService {
       createdAt: data.created_at ? new Date(data.created_at).getTime() : undefined,
       updatedAt: data.updated_at ? new Date(data.updated_at).getTime() : undefined,
     };
+    
+    // Debug
+    // if (dexieTableName === 'strokes') {
+    //     console.log(`[Sync] Mapping stroke from supabase. Points:`, data.points);
+    // }
 
     switch (dexieTableName) {
       case "folders":
@@ -183,12 +271,53 @@ class SyncService {
       case "pages":
         return { ...common, notebookId: data.notebook_id, title: data.title, type: data.type, settings: data.settings };
       case "strokes":
+        // Ensure points is a valid array of numbers
+        let points = data.points;
+        if (typeof points === 'string') {
+            // Check if it's a hex string (Postgres bytea)
+            if (points.startsWith('\\x')) {
+                // Decode bytea hex string
+                // \x000102... -> Uint8Array -> number[]
+                // This is a simplified decoding for demonstration. 
+                // In reality, bytea is binary. 
+                // If points were stored as binary, we need to know the encoding.
+                // Assuming points were JSON stringified then stored as text/bytea?
+                // Or stored as raw bytes?
+                
+                // If the data came from Supabase client for a 'bytea' column, it might be a hex string.
+                // But typically for 'jsonb' or 'text' it's a string.
+                // The logs show: \x5b313533... which is hex for "[153..." (JSON string)
+                
+                // Let's try to parse the hex as utf8 string
+                try {
+                    const hex = points.substring(2);
+                    let str = '';
+                    for (let i = 0; i < hex.length; i += 2) {
+                        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+                    }
+                    points = JSON.parse(str);
+                } catch (e) {
+                    console.error("Failed to parse bytea points:", e);
+                    points = [];
+                }
+            } else {
+                 try {
+                    points = JSON.parse(points);
+                 } catch (e) {
+                    console.error("Failed to parse points string:", e);
+                    points = [];
+                 }
+            }
+        }
+        
         return {
           ...common,
           pageId: data.page_id,
-          points: data.points,
+          points: Array.isArray(points) ? points : [],
           color: data.color,
-          width: data.width,
+          width: 0, // Bounding box width - not stored in DB stroke row
+          height: 0, // Bounding box height
+          strokeWidth: data.width, // Map DB width back to strokeWidth
         };
       case "canvasElements":
         return {
@@ -204,11 +333,37 @@ class SyncService {
           data: data.data,
         };
       case "appState":
-        return {
-          key: data.key,
-          value: data.value,
-          updatedAt: common.updatedAt,
-        };
+        // This is tricky because pullAll expects one object, but we might need to return multiple.
+        // However, mapFromSupabase is called inside a loop in pullAll.
+        // For appState, pullAll fetches a single row.
+        // We should return an array of objects here, but mapFromSupabase signature assumes one object.
+        // Let's modify pullAll to handle array returns or special case appState.
+        
+        // For now, let's return a special object that contains the expanded state
+        // and handle it in pullAll
+        const result: any[] = [];
+         const updatedAt = common.updatedAt || Date.now();
+ 
+         if (data.last_opened_page !== undefined) {
+             result.push({ key: "activePageId", value: data.last_opened_page, updatedAt });
+         }
+         
+         if (data.ui_state) {
+             if (data.ui_state.settings) {
+                 result.push({ key: "settings", value: data.ui_state.settings, updatedAt });
+             }
+             if (data.ui_state.sidebarVisible !== undefined) {
+                 result.push({ key: "sidebarVisible", value: data.ui_state.sidebarVisible, updatedAt });
+             }
+             // Map other keys
+             Object.keys(data.ui_state).forEach(k => {
+                 if (k !== "settings" && k !== "sidebarVisible") {
+                     result.push({ key: k, value: data.ui_state[k], updatedAt });
+                 }
+             });
+         }
+         
+         return result;
       default:
         return data;
     }
@@ -230,6 +385,31 @@ class SyncService {
         if (allItems.length === 0) continue;
 
         const supabaseTableName = TABLE_MAPPING[dexieTableName];
+        
+        if (dexieTableName === 'appState') {
+            // Special handling: merge all rows into one to avoid "ON CONFLICT" errors
+            // because multiple local rows map to the single remote user row
+            const mappedItems = await Promise.all(allItems.map(item => this.mapToSupabase(dexieTableName, { ...item, userId: this.userId })));
+            
+            const mergedItem = mappedItems.reduce((acc, curr) => {
+                // Take the latest updated_at
+                const latestUpdate = (!acc.updated_at || (curr.updated_at && new Date(curr.updated_at) > new Date(acc.updated_at))) 
+                    ? curr.updated_at 
+                    : acc.updated_at;
+
+                return {
+                    ...acc,
+                    ...curr,
+                    updated_at: latestUpdate,
+                    ui_state: { ...(acc.ui_state || {}), ...(curr.ui_state || {}) }
+                };
+            }, {});
+            
+            const { error } = await supabase.from(supabaseTableName).upsert(mergedItem);
+            if (error) console.error(`Failed to push merged appState:`, error);
+            console.log(`Pushed merged appState record`);
+            continue;
+        }
         
         // Chunking with smaller batches for heavy tables
         const chunkSize = (dexieTableName === 'strokes' || dexieTableName === 'canvasElements') ? 20 : 50;
@@ -293,8 +473,16 @@ class SyncService {
         }
 
         if (allData.length > 0) {
-          const dexieData = allData.map((item) => this.mapFromSupabase(dexieTableName, item));
-          await table.bulkPut(dexieData);
+          if (dexieTableName === "appState") {
+              // Flatten the arrays returned by mapFromSupabase for appState
+              const dexieData = allData.flatMap((item) => this.mapFromSupabase(dexieTableName, item));
+              if (dexieData.length > 0) {
+                  await table.bulkPut(dexieData);
+              }
+          } else {
+              const dexieData = allData.map((item) => this.mapFromSupabase(dexieTableName, item));
+              await table.bulkPut(dexieData);
+          }
           console.log(`Synced ${allData.length} records for ${dexieTableName}`);
         }
       }
