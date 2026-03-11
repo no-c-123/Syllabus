@@ -156,8 +156,8 @@ export default function App() {
     return (
       <div className="h-screen w-screen bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-secondary)]">
         <div className="animate-pulse flex flex-col items-center">
-          <div className="w-8 h-8 rounded-full border-2 border-[var(--accent-primary)] border-t-transparent animate-spin mb-4" />
-          <span className="text-sm tracking-widest uppercase">Loading Syllabus...</span>
+          <img src="/Girok-logo-G.png" alt="GirokIQ" className="w-12 h-12 mb-4 animate-pulse object-contain" />
+          <span className="text-sm tracking-widest uppercase">Loading GirokIQ...</span>
         </div>
       </div>
     );

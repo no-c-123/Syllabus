@@ -127,10 +127,8 @@ export function Sidebar() {
         {/* Header */}
         <div className="p-4 pt-6">
           <div className="flex items-center gap-2 mb-6 px-2">
-            <div className="w-6 h-6 rounded-md bg-[var(--accent-subtle)] flex items-center justify-center border border-[var(--accent-primary)]/30 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
-              <div className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse" />
-            </div>
-            <span className="font-medium text-[var(--text-primary)] tracking-tight">Syllabus</span>
+            <img src="/Girok-logo-G.png" alt="GirokIQ Logo" className="w-8 h-8 object-contain" />
+            <span className="font-medium text-[var(--text-primary)] tracking-tight">GirokIQ</span>
           </div>
 
           {/* Search */}

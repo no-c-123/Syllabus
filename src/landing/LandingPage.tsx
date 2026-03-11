@@ -19,10 +19,8 @@ export function LandingPage({ onGetStarted, onSignIn }: LandingPageProps) {
       {/* Navbar */}
       <nav className="relative z-50 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
-            <span className="font-serif font-bold text-white text-lg italic">S</span>
-          </div>
-          <span className="text-xl font-bold tracking-tight">Syllabus</span>
+          <img src="/Girok-logo-G.png" alt="GirokIQ Logo" className="w-10 h-10 object-contain" />
+          <span className="text-xl font-bold tracking-tight">GirokIQ</span>
         </div>
         <button 
           onClick={onSignIn}
@@ -92,7 +90,7 @@ export function LandingPage({ onGetStarted, onSignIn }: LandingPageProps) {
 
       {/* Footer */}
       <footer className="relative z-10 py-8 text-center text-xs text-zinc-600">
-        <p>© 2024 Syllabus. Crafted for thinkers.</p>
+        <p>© 2024 GirokIQ. Crafted for thinkers.</p>
       </footer>
     </div>
   );

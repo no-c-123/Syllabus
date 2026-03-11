@@ -160,7 +160,7 @@ export function LoginPage({ onBack }: LoginPageProps) {
                         <div className='w-1/2 h-full flex flex-col items-center justify-center px-12 text-center'>
                             <h2 className="text-4xl font-bold mb-4 text-white">New Here?</h2>
                             <p className="text-center mb-8 text-indigo-100">
-                                Enter your personal details and start your journey with Syllabus
+                                Enter your personal details and start your journey with GirokIQ
                             </p>
                             <button
                                 onClick={toggleForm}
@@ -307,8 +307,8 @@ export function LoginPage({ onBack }: LoginPageProps) {
                     {/* RIGHT SIDE: SignUp Form */}
                     <div className={`w-full md:w-1/2 h-full flex justify-center items-center transition-all duration-700 absolute right-0 ${isSignUp ? 'opacity-100 translate-x-0' : 'opacity-0 pointer-events-none translate-x-20'}`}>
                         <section className="text-white flex flex-col justify-center items-center w-full px-8 max-w-md">
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent mb-2">Create Account</h1>
-                            <p className="text-zinc-500 mb-8 text-sm">Join Syllabus to start your journey</p>
+                            <h1 className="text-3xl font-bold bg-linear-to-r from-white to-zinc-400 bg-clip-text text-transparent mb-2">Create Account</h1>
+                            <p className="text-zinc-500 mb-8 text-sm">Join GirokIQ to start your journey</p>
 
                             <form className="w-full flex flex-col gap-5" onSubmit={handleSignUp}>
                                 <div className="group">
