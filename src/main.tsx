@@ -1,25 +1,17 @@
 import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import '@/index.css'
-import { LandingPage } from '@/landing/LandingPage.tsx'
 import { LoginPage } from '@/ui/components/LoginPage.tsx'
 import App from '@/app/App.tsx'
 import { useAuthStore } from '@/store/useAuthStore'
 
 function AppRoutes() {
   const { session, initialize, loading } = useAuthStore();
-  const navigate = useNavigate();
 
   useEffect(() => {
     initialize();
   }, []);
-
-  useEffect(() => {
-    if (session && window.location.pathname === '/') {
-      navigate('/app');
-    }
-  }, [session, navigate]);
 
   if (loading) {
     return <div className="h-screen w-screen bg-black" />; // Or a spinner
@@ -30,22 +22,19 @@ function AppRoutes() {
       <Route 
         path="/" 
         element={
-          <LandingPage 
-            onGetStarted={() => navigate(session ? '/app' : '/login')} 
-            onSignIn={() => navigate('/login')} 
-          />
+          session ? <App /> : <Navigate to="/login" />
         } 
       />
       <Route 
         path="/login" 
         element={
-          session ? <Navigate to="/app" /> : <LoginPage onBack={() => navigate('/')} />
+          session ? <Navigate to="/" /> : <LoginPage />
         } 
       />
       <Route 
         path="/app/*" 
         element={
-          session ? <App /> : <Navigate to="/login" />
+          <Navigate to="/" replace />
         } 
       />
     </Routes>

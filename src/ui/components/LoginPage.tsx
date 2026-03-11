@@ -2,11 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/sync/supabase';
 import { ArrowLeft, Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
-interface LoginPageProps {
-  onBack: () => void;
-}
-
-export function LoginPage({ onBack }: LoginPageProps) {
+export function LoginPage() {
     const [isSignUp, setIsSignUp] = useState(false);
     const [isForgotPassword, setIsForgotPassword] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -117,13 +113,14 @@ export function LoginPage({ onBack }: LoginPageProps) {
                 <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-600/20 rounded-full blur-[120px]" />
             </div>
 
-            <button
+            {/* Back Button - Removed since there is no landing page */}
+            {/* <button
                 onClick={onBack}
                 className="absolute top-8 left-8 flex items-center gap-2 text-zinc-500 hover:text-zinc-200 transition-colors z-20"
             >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="text-sm font-medium">Back</span>
-            </button>
+            </button> */}
 
             <div className={`relative w-full max-w-[80%] rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 bg-zinc-900/40 backdrop-blur-xl h-200 min-h-200`}>
                 
