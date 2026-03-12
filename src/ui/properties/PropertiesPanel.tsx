@@ -4,7 +4,7 @@ import { useCanvasStore } from "@/stores/useCanvasStore";
 import { cn } from "@/utils";
 import { ColorPicker } from "@/ui/properties/ColorPicker";
 import { useState } from "react";
-import { Sliders } from "lucide-react";
+import { Sliders, Minimize2 } from "lucide-react";
 
 export function PropertiesPanel() {
   const strokeWidth = useUIStore((s) => s.strokeWidth);
@@ -32,12 +32,34 @@ export function PropertiesPanel() {
 
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  if (isCollapsed) {
+    return (
+      <button
+        onClick={() => setIsCollapsed(false)}
+        className="p-3 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-lg shadow-sm hover:bg-[var(--bg-canvas)] transition-colors flex items-center justify-center"
+        title="Show Properties"
+      >
+        <Sliders className="w-5 h-5 text-[var(--text-secondary)]" />
+      </button>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 p-4 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-lg shadow-sm w-64">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-xs font-semibold uppercase text-[var(--text-secondary)] tracking-wider">Properties</h3>
-        <Sliders className="w-4 h-4 text-[var(--text-tertiary)]" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCollapsed(true)}
+            className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+            title="Hide Properties"
+          >
+            <Minimize2 className="w-4 h-4" />
+          </button>
+          <Sliders className="w-4 h-4 text-[var(--text-tertiary)]" />
+        </div>
       </div>
 
       {/* Stroke Color */}

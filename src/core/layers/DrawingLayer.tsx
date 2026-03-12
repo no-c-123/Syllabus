@@ -1,6 +1,6 @@
 import { Layer, Group, Path } from "react-konva";
 import type { StrokeElement } from "@/elements/types";
-import { useMemo, useRef, useEffect, memo } from "react";
+import { useMemo, useRef, useEffect, memo, useState } from "react";
 import Konva from "konva";
 import { spatialIndex } from "@/spatial/SpatialIndex";
 
@@ -172,10 +172,11 @@ export function DrawingLayer({
                 x={tileX}
                 y={tileY}
                 strokes={tileStrokes}
+                zoom={viewport?.zoom || 1}
             />
         );
     });
-  }, [visibleTileKeys, strokes, selectedIds]); 
+  }, [visibleTileKeys, strokes, selectedIds, viewport?.zoom]); 
 
   // Render selected strokes separately (live, not cached)
   const selectedStrokesLayer = useMemo(() => {
@@ -260,8 +261,17 @@ export function DrawingLayer({
 }
 
 // Separate component for each tile to handle its own caching
-const Tile = memo(function Tile({ x, y, strokes }: { x: number, y: number, strokes: StrokeElement[] }) {
+const Tile = memo(function Tile({ x, y, strokes, zoom }: { x: number, y: number, strokes: StrokeElement[], zoom: number }) {
     const groupRef = useRef<Konva.Group>(null);
+    const [debouncedZoom, setDebouncedZoom] = useState(zoom);
+
+    // Debounce zoom updates to prevent constant re-caching during zoom gestures
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedZoom(zoom);
+        }, 200);
+        return () => clearTimeout(handler);
+    }, [zoom]);
 
     const paths = useMemo(() => {
         return strokes.map(stroke => {
@@ -291,15 +301,23 @@ const Tile = memo(function Tile({ x, y, strokes }: { x: number, y: number, strok
             
             if (bounds.width > 0 && bounds.height > 0) {
                  const padding = 100;
+                 // Use devicePixelRatio * zoom to ensure sharp rendering at current zoom level
+                 // Cap the pixelRatio to prevent memory issues at very high zoom levels
+                 const pixelRatio = Math.min(
+                     (window.devicePixelRatio || 1) * debouncedZoom, 
+                     5 // Cap at 5x resolution (reasonable limit for most devices)
+                 );
+                 
                  groupRef.current.cache({
                     x: -padding,
                     y: -padding,
                     width: TILE_SIZE + (padding * 2),
                     height: TILE_SIZE + (padding * 2),
+                    pixelRatio
                  });
             }
         }
-    }, [paths]);
+    }, [paths, debouncedZoom]);
 
     if (strokes.length === 0) return null;
 
@@ -326,6 +344,7 @@ const Tile = memo(function Tile({ x, y, strokes }: { x: number, y: number, strok
     );
 }, (prev, next) => {
     if (prev.x !== next.x || prev.y !== next.y) return false;
+    if (prev.zoom !== next.zoom) return false;
     if (prev.strokes.length !== next.strokes.length) return false;
     // Check if stroke references are identical (fast due to immutable updates)
     for (let i = 0; i < prev.strokes.length; i++) {
